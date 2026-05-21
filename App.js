@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -53,26 +54,40 @@ function HomeScreen({ navigation }) {
 
     try {
       await signInWithEmailAndPassword(auth, emailTratado, senha);
-      Alert.alert("Sucesso", "Login realizado com sucesso!", [
-        {
-          text: "OK",
-          onPress: () => navigation.replace("Pais"),
-        },
-      ]);
+
+      if (Platform.OS === "web") {
+        window.alert("Sucesso: Login realizado com sucesso!");
+        navigation.replace("Pais");
+      } else {
+        Alert.alert("Sucesso", "Login realizado com sucesso!", [
+          { text: "OK", onPress: () => navigation.replace("Pais") },
+        ]);
+      }
     } catch (error) {
-      Alert.alert("Erro", error.message);
+      if (Platform.OS === "web") {
+        window.alert("Email ou senha incorreta!");
+      } else {
+        Alert.alert("Email ou senha incorreta!");
+      }
     }
   };
 
   return (
     <View style={styles.containerApp}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Bem-vindo</Text>
-        <Text style={styles.headerSubtitle}>Faça seu login</Text>
-      </View>
+      <View style={styles.header}></View>
 
       <View style={styles.mainCard}>
-        <Text style={styles.sectionTitle}>Acessar conta</Text>
+        <View style={styles.mainCardImage}>
+          <Image
+            source={{
+              uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0XaTyIED4Ho54dARu0uOrfBjgVAWOb0Tm-w&s",
+            }}
+            style={{ width: 200, height: 200 }}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.sectionTitle}>Conheça O Mundo</Text>
+        <Text style={styles.SmallText}>Explore. Descubra. Viaje.</Text>
 
         <Text style={styles.label}>Email</Text>
         <TextInput
@@ -101,7 +116,9 @@ function HomeScreen({ navigation }) {
           style={styles.secondaryButton}
           onPress={() => navigation.navigate("Cadastro")}
         >
-          <Text style={styles.secondaryButtonText}>Criar nova conta</Text>
+          <Text style={styles.secondaryButtonText}>
+            Ainda não tem conta? Cadastre-se
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -122,12 +139,15 @@ function CadastroScreen({ navigation }) {
 
     try {
       await createUserWithEmailAndPassword(auth, emailTratado, senha);
-      Alert.alert("Sucesso", "Cadastro realizado!", [
-        {
-          text: "OK",
-          onPress: () => navigation.replace("Home"),
-        },
-      ]);
+
+      if (Platform.OS === "web") {
+        window.alert("Sucesso: Cadastro realizado!");
+        navigation.replace("Home");
+      } else {
+        Alert.alert("Sucesso", "Cadastro realizado!", [
+          { text: "OK", onPress: () => navigation.replace("Home") },
+        ]);
+      }
     } catch (error) {
       let msgErro = error.message;
       if (error.code === "auth/invalid-email")
@@ -138,18 +158,28 @@ function CadastroScreen({ navigation }) {
       if (error.code === "auth/weak-password")
         msgErro = "A senha precisa ter pelo menos 6 caracteres.";
 
-      Alert.alert("Erro no Cadastro", msgErro);
+      if (Platform.OS === "web") {
+        window.alert("Erro no Cadastro: " + msgErro);
+      } else {
+        Alert.alert("Erro no Cadastro", msgErro);
+      }
     }
   };
 
   return (
     <View style={styles.containerApp}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Cadastro</Text>
-        <Text style={styles.headerSubtitle}>Crie sua conta</Text>
-      </View>
+      <View style={styles.header}></View>
 
       <View style={styles.mainCard}>
+        <View style={styles.mainCardImage}>
+          <Image
+            source={{
+              uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0XaTyIED4Ho54dARu0uOrfBjgVAWOb0Tm-w&s",
+            }}
+            style={{ width: 200, height: 200 }}
+            resizeMode="contain"
+          />
+        </View>
         <Text style={styles.sectionTitle}>Novo usuário</Text>
 
         <Text style={styles.label}>Email</Text>
@@ -188,12 +218,32 @@ function CadastroScreen({ navigation }) {
 
 function PaisScreen() {
   const [paises, setPaises] = React.useState([]);
+  const [busca, setBusca] = React.useState("");
+
+  const buscarNaApi = async (textoDaBusca) => {
+    try {
+      let url = "https://restcountries.com/v3.1/all?fields=name,capital,flags";
+
+      if (textoDaBusca.trim() !== "") {
+        url = `https://restcountries.com/v3.1/name/${textoDaBusca.trim()}?fields=name,capital,flags`;
+      }
+
+      const res = await fetch(url);
+
+      if (res.status === 404) {
+        setPaises([]);
+        return;
+      }
+
+      const data = await res.json();
+      setPaises(data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   React.useEffect(() => {
-    fetch("https://restcountries.com/v3.1/all?fields=name,capital,flags")
-      .then((res) => res.json())
-      .then(setPaises)
-      .catch((error) => console.log(error));
+    buscarNaApi("");
   }, []);
 
   return (
@@ -204,6 +254,18 @@ function PaisScreen() {
       >
         <View style={styles.top}>
           <Text style={styles.title}>Países</Text>
+        </View>
+
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Digite e aperte enter no teclado..."
+            placeholderTextColor="#888"
+            value={busca}
+            onChangeText={setBusca}
+            onSubmitEditing={() => buscarNaApi(busca)}
+            returnKeyType="search"
+          />
         </View>
 
         <View style={{ padding: 15 }}>
@@ -257,10 +319,10 @@ export default function App() {
 const styles = StyleSheet.create({
   containerApp: {
     flex: 1,
-    backgroundColor: "#f2f4f7",
+    backgroundColor: "#e3f3fe",
   },
   header: {
-    backgroundColor: "#2f3e9e",
+    backgroundColor: "#e3f3fe",
     paddingTop: 60,
     paddingBottom: 40,
     alignItems: "center",
@@ -285,8 +347,17 @@ const styles = StyleSheet.create({
     padding: 20,
     elevation: 5,
   },
+  mainCardImage: {
+    alignItems: "center",
+  },
   sectionTitle: {
     fontSize: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  SmallText: {
+    fontSize: 12,
     fontWeight: "bold",
     textAlign: "center",
     marginBottom: 15,
@@ -301,7 +372,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   primaryButton: {
-    backgroundColor: "#4fb6a3",
+    backgroundColor: "#98d6ff",
     padding: 15,
     borderRadius: 25,
     marginTop: 20,
@@ -324,7 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#f2f3f7",
   },
   top: {
-    backgroundColor: "#1c2854",
+    backgroundColor: "#2c5ac8",
     paddingTop: 70,
     paddingBottom: 40,
     alignItems: "center",
@@ -364,12 +435,26 @@ const styles = StyleSheet.create({
   },
   footer: {
     height: 60,
-    backgroundColor: "#1c2854",
+    backgroundColor: "#2c5ac8",
     justifyContent: "center",
     alignItems: "center",
   },
   footerText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  searchContainer: {
+    paddingHorizontal: 15,
+    marginTop: -20,
+    marginBottom: 10,
+    zIndex: 1,
+  },
+  searchInput: {
+    backgroundColor: "#fff",
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    fontSize: 16,
+    elevation: 5,
   },
 });
